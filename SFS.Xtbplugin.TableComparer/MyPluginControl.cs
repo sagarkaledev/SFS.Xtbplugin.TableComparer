@@ -20,16 +20,24 @@ namespace SFS.Xtbplugin.TableComparer
     {
         private Settings mySettings;
 
+        // List of common OOTB fields
+        private static readonly HashSet<string> OOTBFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "createdon", "createdby", "modifiedon", "modifiedby", "ownerid", "owningbusinessunit", "owninguser", "owningteam",
+            "statecode", "statuscode", "versionnumber", "importsequencenumber", "overriddencreatedon", "transactioncurrencyid",
+            "organizationid", "timezoneruleversionnumber", "utcconversiontimezonecode", "processid", "stageid", "entityimage",
+            "exchangeRate", "owningteam", "owninguser", "owningbusinessunit", "createdonbehalfby", "modifiedonbehalfby"
+        };
+
         public MyPluginControl()
         {
             InitializeComponent();
+            dgvComparison.CellFormatting += dgvComparison_CellFormatting;
+            chkHideOOTB.CheckedChanged += chkHideOOTB_CheckedChanged;
         }
 
         private void MyPluginControl_Load(object sender, EventArgs e)
         {
-            // Removed notification on load
-            // ShowInfoNotification("This is a notification that can lead to XrmToolBox repository", new Uri("https://github.com/MscrmTools/XrmToolBox"));
-
             // Loads or creates the settings for the plugin
             if (!SettingsManager.Instance.TryLoad(GetType(), out mySettings))
             {
@@ -70,12 +78,14 @@ namespace SFS.Xtbplugin.TableComparer
                         return;
                     }
                     var entities = args.Result as List<EntityMetadata>;
+                    // Sort alphabetically by logical name
+                    entities = entities.OrderBy(e => e.LogicalName).ToList();
                     tsbTable1.ComboBox.DataSource = new BindingSource(entities, null);
-                    tsbTable1.ComboBox.DisplayMember = "DisplayName.UserLocalizedLabel.Label";
+                    tsbTable1.ComboBox.DisplayMember = "LogicalName";
                     tsbTable1.ComboBox.ValueMember = "LogicalName";
 
                     tsbTable2.ComboBox.DataSource = new BindingSource(entities.ToList(), null);
-                    tsbTable2.ComboBox.DisplayMember = "DisplayName.UserLocalizedLabel.Label";
+                    tsbTable2.ComboBox.DisplayMember = "LogicalName";
                     tsbTable2.ComboBox.ValueMember = "LogicalName";
                 }
             });
@@ -95,6 +105,7 @@ namespace SFS.Xtbplugin.TableComparer
 
         private void LoadAndCompareTableColumns(string logicalName1, string logicalName2)
         {
+            bool hideOOTB = chkHideOOTB.Checked;
             WorkAsync(new WorkAsyncInfo
             {
                 Message = $"Comparing columns for {logicalName1} and {logicalName2}...",
@@ -115,19 +126,32 @@ namespace SFS.Xtbplugin.TableComparer
                     var attrs1 = response1.EntityMetadata.Attributes.ToDictionary(a => a.LogicalName);
                     var attrs2 = response2.EntityMetadata.Attributes.ToDictionary(a => a.LogicalName);
                     var allKeys = attrs1.Keys.Union(attrs2.Keys).OrderBy(k => k).ToList();
+                    // Filter OOTB fields if requested
+                    if (hideOOTB)
+                    {
+                        string pk1 = logicalName1 + "id";
+                        string pk2 = logicalName2 + "id";
+                        allKeys = allKeys.Where(k => !OOTBFields.Contains(k) && k != pk1 && k != pk2).ToList();
+                    }
                     var rows = new List<dynamic>();
                     foreach (var key in allKeys)
                     {
                         var a1 = attrs1.ContainsKey(key) ? attrs1[key] : null;
                         var a2 = attrs2.ContainsKey(key) ? attrs2[key] : null;
+                        // Get size for string, memo, decimal, double, integer, money, etc.
+                        string size1 = GetAttributeSize(a1);
+                        string size2 = GetAttributeSize(a2);
                         rows.Add(new
                         {
                             Field = key,
-                            Table1_DisplayName = a1?.DisplayName?.UserLocalizedLabel?.Label ?? "",
+                            Table1_Display_Name = a1?.DisplayName?.UserLocalizedLabel?.Label ?? "",
                             Table1_DataType = a1?.AttributeTypeName?.Value ?? "",
+                            Table1_Size = size1,
                             Table1_Required = a1?.RequiredLevel?.Value.ToString() ?? "",
-                            Table2_DisplayName = a2?.DisplayName?.UserLocalizedLabel?.Label ?? "",
+                            Separator = "", // Empty separator column
+                            Table2_Display_Name = a2?.DisplayName?.UserLocalizedLabel?.Label ?? "",
                             Table2_DataType = a2?.AttributeTypeName?.Value ?? "",
+                            Table2_Size = size2,
                             Table2_Required = a2?.RequiredLevel?.Value.ToString() ?? "",
                             OnlyIn = a1 == null ? "Table2" : a2 == null ? "Table1" : (a1.AttributeTypeName?.Value != a2.AttributeTypeName?.Value || a1.RequiredLevel?.Value != a2.RequiredLevel?.Value ? "Diff" : "Both")
                         });
@@ -143,6 +167,13 @@ namespace SFS.Xtbplugin.TableComparer
                     }
                     var rows = args.Result as List<dynamic>;
                     dgvComparison.DataSource = rows;
+                    // Set separator column width
+                    if (dgvComparison.Columns.Contains("Separator"))
+                    {
+                        dgvComparison.Columns["Separator"].Width = 10;
+                        dgvComparison.Columns["Separator"].Resizable = DataGridViewTriState.False;
+                        dgvComparison.Columns["Separator"].DefaultCellStyle.BackColor = Color.White;
+                    }
                     // Highlight differences
                     foreach (DataGridViewRow row in dgvComparison.Rows)
                     {
@@ -198,6 +229,14 @@ namespace SFS.Xtbplugin.TableComparer
             });
         }
 
+        private void dgvComparison_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (dgvComparison.Columns[e.ColumnIndex].Name == "Field")
+            {
+                e.CellStyle.Font = new Font(dgvComparison.DefaultCellStyle.Font, FontStyle.Bold);
+            }
+        }
+
         /// <summary>
         /// This event occurs when the plugin is closed
         /// </summary>
@@ -220,6 +259,45 @@ namespace SFS.Xtbplugin.TableComparer
             {
                 mySettings.LastUsedOrganizationWebappUrl = detail.WebApplicationUrl;
                 LogInfo("Connection has changed to: {0}", detail.WebApplicationUrl);
+            }
+        }
+
+        private void chkHideOOTB_CheckedChanged(object sender, EventArgs e)
+        {
+            var entity1 = tsbTable1.ComboBox.SelectedItem as Microsoft.Xrm.Sdk.Metadata.EntityMetadata;
+            var entity2 = tsbTable2.ComboBox.SelectedItem as Microsoft.Xrm.Sdk.Metadata.EntityMetadata;
+            if (entity1 != null && entity2 != null)
+            {
+                LoadAndCompareTableColumns(entity1.LogicalName, entity2.LogicalName);
+            }
+        }
+
+        // Helper to get attribute size as string
+        private string GetAttributeSize(AttributeMetadata attr)
+        {
+            if (attr == null) return "";
+            switch (attr.AttributeType)
+            {
+                case AttributeTypeCode.String:
+                    var stringMeta = attr as StringAttributeMetadata;
+                    return stringMeta?.MaxLength?.ToString() ?? "";
+                case AttributeTypeCode.Memo:
+                    var memoMeta = attr as MemoAttributeMetadata;
+                    return memoMeta?.MaxLength?.ToString() ?? "";
+                case AttributeTypeCode.Decimal:
+                    var decMeta = attr as DecimalAttributeMetadata;
+                    return decMeta?.MaxValue?.ToString() ?? "";
+                case AttributeTypeCode.Double:
+                    var dblMeta = attr as DoubleAttributeMetadata;
+                    return dblMeta?.MaxValue?.ToString() ?? "";
+                case AttributeTypeCode.Integer:
+                    var intMeta = attr as IntegerAttributeMetadata;
+                    return intMeta?.MaxValue?.ToString() ?? "";
+                case AttributeTypeCode.Money:
+                    var moneyMeta = attr as MoneyAttributeMetadata;
+                    return moneyMeta?.MaxValue?.ToString() ?? "";
+                default:
+                    return "";
             }
         }
     }

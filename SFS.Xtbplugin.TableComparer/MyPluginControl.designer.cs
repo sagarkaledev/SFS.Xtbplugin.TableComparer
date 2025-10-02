@@ -37,6 +37,8 @@
             this.tsbLabelTable2 = new System.Windows.Forms.ToolStripLabel();
             this.tsbTable2 = new System.Windows.Forms.ToolStripComboBox();
             this.tsbCompare = new System.Windows.Forms.ToolStripButton();
+            this.chkHideOOTB = new System.Windows.Forms.CheckBox();
+            this.tsbHideOOTB = new System.Windows.Forms.ToolStripControlHost(this.chkHideOOTB);
             this.dgvComparison = new System.Windows.Forms.DataGridView();
             this.toolStripMenu.SuspendLayout();
             this.SuspendLayout();
@@ -58,6 +60,7 @@
                 this.tsbTable1,
                 this.tsbLabelTable2,
                 this.tsbTable2,
+                this.tsbHideOOTB,
                 this.tsbCompare});
             this.toolStripMenu.Location = new System.Drawing.Point(0, 0);
             this.toolStripMenu.Name = "toolStripMenu";
@@ -104,10 +107,22 @@
             // tsbCompare
             // 
             this.tsbCompare.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.ImageAndText;
-            this.tsbCompare.Image = System.Drawing.SystemIcons.Shield.ToBitmap(); // Shield icon
+            this.tsbCompare.Image = System.Drawing.SystemIcons.Shield.ToBitmap();
             this.tsbCompare.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.tsbCompare.Text = "Compare";
             this.tsbCompare.Click += new System.EventHandler(this.tsbCompare_Click);
+            // 
+            // chkHideOOTB
+            // 
+            this.chkHideOOTB.AutoSize = true;
+            this.chkHideOOTB.Checked = false;
+            this.chkHideOOTB.Name = "chkHideOOTB";
+            this.chkHideOOTB.Size = new System.Drawing.Size(139, 24);
+            this.chkHideOOTB.Text = "Hide OOTB Fields";
+            this.chkHideOOTB.UseVisualStyleBackColor = true;
+            this.tsbHideOOTB.Name = "tsbHideOOTB";
+            this.tsbHideOOTB.Alignment = System.Windows.Forms.ToolStripItemAlignment.Left;
+            this.tsbHideOOTB.Size = new System.Drawing.Size(150, 28);
             // 
             // dgvComparison
             // 
@@ -148,6 +163,8 @@
         private System.Windows.Forms.ToolStripLabel tsbLabelTable2;
         private System.Windows.Forms.ToolStripComboBox tsbTable2;
         private System.Windows.Forms.ToolStripButton tsbCompare;
+        private System.Windows.Forms.CheckBox chkHideOOTB;
+        private System.Windows.Forms.ToolStripControlHost tsbHideOOTB;
         private System.Windows.Forms.DataGridView dgvComparison;
     }
 }
