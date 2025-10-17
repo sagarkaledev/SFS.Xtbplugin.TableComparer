@@ -40,6 +40,8 @@
             this.chkHideOOTB = new System.Windows.Forms.CheckBox();
             this.tsbHideOOTB = new System.Windows.Forms.ToolStripControlHost(this.chkHideOOTB);
             this.dgvComparison = new System.Windows.Forms.DataGridView();
+            this.tssSeparator2 = new System.Windows.Forms.ToolStripSeparator();
+            this.tsbCloneSelectedColumn = new System.Windows.Forms.ToolStripButton();
             this.toolStripMenu.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -61,7 +63,9 @@
                 this.tsbLabelTable2,
                 this.tsbTable2,
                 this.tsbHideOOTB,
-                this.tsbCompare});
+                this.tsbCompare,
+                this.tssSeparator2,
+                this.tsbCloneSelectedColumn});
             this.toolStripMenu.Location = new System.Drawing.Point(0, 0);
             this.toolStripMenu.Name = "toolStripMenu";
             this.toolStripMenu.Padding = new System.Windows.Forms.Padding(0, 0, 2, 0);
@@ -137,6 +141,15 @@
             this.dgvComparison.Size = new System.Drawing.Size(1200, 769);
             this.dgvComparison.TabIndex = 15;
             // 
+            // tsbCloneSelectedColumn
+            // 
+            this.tsbCloneSelectedColumn.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.tsbCloneSelectedColumn.Enabled = false;
+            this.tsbCloneSelectedColumn.Name = "tsbCloneSelectedColumn";
+            this.tsbCloneSelectedColumn.Size = new System.Drawing.Size(150, 28);
+            this.tsbCloneSelectedColumn.Text = "Clone selected Column";
+            this.tsbCloneSelectedColumn.Click += new System.EventHandler(this.tsbCloneSelectedColumn_Click);
+            // 
             // MyPluginControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
@@ -166,5 +179,7 @@
         private System.Windows.Forms.CheckBox chkHideOOTB;
         private System.Windows.Forms.ToolStripControlHost tsbHideOOTB;
         private System.Windows.Forms.DataGridView dgvComparison;
+        private System.Windows.Forms.ToolStripSeparator tssSeparator2;
+        private System.Windows.Forms.ToolStripButton tsbCloneSelectedColumn;
     }
 }
