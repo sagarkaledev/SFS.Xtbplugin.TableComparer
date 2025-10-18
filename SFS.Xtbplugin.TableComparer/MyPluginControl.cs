@@ -496,6 +496,10 @@ namespace SFS.Xtbplugin.TableComparer
                             if (originalRequiredLevel != null && originalRequiredLevel.Value != AttributeRequiredLevel.None)
                             {
                                 LogInfo($"[Clone] Attempting to replicate RequiredLevel='{originalRequiredLevel.Value}' on target attribute.");
+                                
+                                // Wait a moment for the attribute to be fully created
+                                System.Threading.Thread.Sleep(1000);
+                                
                                 // Retrieve the attribute again after creation to get the correct MetadataId
                                 var targetAttrResp = (RetrieveAttributeResponse)Service.Execute(new RetrieveAttributeRequest
                                 {
@@ -504,7 +508,15 @@ namespace SFS.Xtbplugin.TableComparer
                                     RetrieveAsIfPublished = true
                                 });
                                 var updateAttr = targetAttrResp.AttributeMetadata;
+                                
+                                // Set the RequiredLevel with proper managed property
                                 updateAttr.RequiredLevel = new AttributeRequiredLevelManagedProperty(originalRequiredLevel.Value);
+                                
+                                // Also set the CanBeChanged property to ensure it can be modified
+                                if (updateAttr.RequiredLevel != null)
+                                {
+                                    updateAttr.RequiredLevel.CanBeChanged = true;
+                                }
 
                                 var updateReq = new UpdateAttributeRequest
                                 {
@@ -514,6 +526,15 @@ namespace SFS.Xtbplugin.TableComparer
 
                                 Service.Execute(updateReq);
                                 LogInfo("[Clone] RequiredLevel replicated via UpdateAttributeRequest.");
+
+                                // Verify the RequiredLevel was set correctly
+                                var verifyResp = (RetrieveAttributeResponse)Service.Execute(new RetrieveAttributeRequest
+                                {
+                                    EntityLogicalName = targetEntity.LogicalName,
+                                    LogicalName = attrMeta.LogicalName,
+                                    RetrieveAsIfPublished = true
+                                });
+                                LogInfo($"[Clone] Verified RequiredLevel after update: {verifyResp.AttributeMetadata.RequiredLevel?.Value}");
 
                                 // Publish the customization so the required level takes effect
                                 try
@@ -525,6 +546,10 @@ namespace SFS.Xtbplugin.TableComparer
                                 {
                                     LogError($"[Clone] Failed to publish changes: {pex}");
                                 }
+                            }
+                            else
+                            {
+                                LogInfo($"[Clone] No RequiredLevel to replicate. Original: {originalRequiredLevel?.Value}");
                             }
                         }
                         catch (Exception ex)
